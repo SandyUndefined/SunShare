@@ -16,6 +16,12 @@ class Web3Service {
       throw Exception('Failed to call function');
     }
   }
+    // List panel function
+  Future<void> listPanel(
+      String userAddress, int capacity, int rentalRate) async {
+    // Prepare the payload for the smart contract function call
+    // Use Aptos CLI or SDK to make the request
+  }
 
   Future<void> createListing(
       int ratePerHour, int deposit, int availableHours) async {

@@ -32,8 +32,13 @@ module SunShare::SolarPanelRental {
         agreements: vector<RentalAgreement>
     }
 
+    // Ensure only authenticated users can list a panel
     public fun list_panel(account: &signer, capacity: u64, rental_rate: u64) acquires PanelRegistry {
         let owner = signer::address_of(account);
+
+        // Ensure the account is authenticated (account must exist)
+        assert!(exists<PanelRegistry>(owner), 1); // Error code 1: unauthorized user
+        
         let new_panel = SolarPanel { owner, capacity, rental_rate, is_rented: false };
 
         if (!exists<PanelRegistry>(owner)) {
@@ -45,6 +50,8 @@ module SunShare::SolarPanelRental {
     }
 
     public fun get_available_panels(owner: address): vector<SolarPanel> acquires PanelRegistry {
+        assert!(exists<PanelRegistry>(owner), 1); // Error code 1: unauthorized user
+        
         let panels = &borrow_global<PanelRegistry>(owner).panels;
         let available_panels = vector::empty<SolarPanel>();
         let len = vector::length(panels);
@@ -63,12 +70,12 @@ module SunShare::SolarPanelRental {
         let renter = signer::address_of(account);
         let panel_owner = get_panel_owner(panel_id);
 
-        assert!(panel_owner != renter, 0);
+        assert!(panel_owner != renter, 0); // Prevent renting own panel
 
         let registry = borrow_global_mut<PanelRegistry>(panel_owner);
         let panel = vector::borrow_mut(&mut registry.panels, panel_id);
 
-        assert!(!panel.is_rented, 1);
+        assert!(!panel.is_rented, 1); // Ensure panel isn't already rented
 
         let rental_start = timestamp::now_seconds();
         let new_agreement = RentalAgreement {
@@ -110,7 +117,7 @@ module SunShare::SolarPanelRental {
         let registry = borrow_global_mut<RentalRegistry>(renter);
         let agreement = vector::borrow_mut(&mut registry.agreements, panel_id);
 
-        assert!(agreement.energy_consumed > 0, 1);
+        assert!(agreement.energy_consumed > 0, 1); // Ensure energy was consumed
 
         let total_cost = agreement.amount_due;
         coin::transfer<AptosCoin>(account, panel_owner, total_cost);
