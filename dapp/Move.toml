@@ -4,6 +4,7 @@ version = "1.0.0"
 authors = []
 
 [addresses]
+SunShare = '0x9063b0cae7dd97c0491259a99ef90b35a93d26248c3a4c295872b158cbfdcac7'
 
 [dev-addresses]
 
