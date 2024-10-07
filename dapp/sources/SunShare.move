@@ -47,6 +47,7 @@ module SunShare::SolarPanelRental {
 
     /// Get all available panels for a given owner
     public fun get_available_panels(owner: address): vector<SolarPanel> acquires PanelRegistry {
+        assert!(exists<PanelRegistry>(owner), 1); // Ensure the owner has a registry
         let panels = &borrow_global<PanelRegistry>(owner).panels;
         let available_panels = vector::empty<SolarPanel>();
         let len = vector::length(panels);

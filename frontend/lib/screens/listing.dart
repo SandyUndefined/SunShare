@@ -15,8 +15,7 @@ class _ListingsScreenState extends State<ListingsScreen> {
     super.initState();
     // Get Web3Service from Provider and fetch panels
     final web3Service = Provider.of<Web3Service>(context, listen: false);
-    // Replace 'your_owner_address' with the actual owner address you want to query
-    futurePanels = web3Service.getAvailablePanels('your_owner_address');
+    futurePanels = web3Service.getAvailablePanels('9063b0cae7dd97c0491259a99ef90b35a93d26248c3a4c295872b158cbfdcac7');
   }
 
   @override
@@ -25,7 +24,6 @@ class _ListingsScreenState extends State<ListingsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('Available Listings'),
           FutureBuilder<List<Map<String, dynamic>>>(
             future: futurePanels,
             builder: (context, snapshot) {
@@ -33,48 +31,35 @@ class _ListingsScreenState extends State<ListingsScreen> {
                 return const CircularProgressIndicator(); // Loading state
               } else if (snapshot.hasError) {
                 return Text('Error: ${snapshot.error}');
-              } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+              } else if (snapshot.hasData && snapshot.data!.isEmpty) {
+                // Handle no available listings
+                return const Text('No available listings');
+              } else if (snapshot.hasData) {
                 final panels = snapshot.data!;
                 return Expanded(
                   child: ListView.builder(
-                    itemCount: panels.length + 1, // Include one static panel
+                    itemCount: panels.length, // List of available panels
                     itemBuilder: (context, index) {
-                      if (index < panels.length) {
-                        final panel = panels[index];
-                        return Card(
-                          child: ListTile(
-                            title:
-                                Text('Solar Panel - ${panel['capacity']} kWh'),
-                            subtitle:
-                                Text('Price: ${panel['rentalRate']} tokens'),
-                            trailing: ElevatedButton(
-                              onPressed: () {
-                                // Logic for renting a panel
-                              },
-                              child: const Text('Rent'),
-                            ),
+                      final panel = panels[index];
+                      return Card(
+                        child: ListTile(
+                          title: Text('Solar Panel - ${panel['capacity']} kWh'),
+                          subtitle:
+                              Text('Price: ${panel['rentalRate']} tokens'),
+                          trailing: ElevatedButton(
+                            onPressed: () {
+                              // Logic for renting a panel
+                            },
+                            child: const Text('Rent'),
                           ),
-                        );
-                      } else {
-                        // Add a static listing at the end
-                        return Card(
-                          child: ListTile(
-                            title: const Text('Static Solar Panel - 5 kWh'),
-                            subtitle: const Text('Price: 30 tokens'),
-                            trailing: ElevatedButton(
-                              onPressed: () {
-                                // Logic for renting this static panel
-                              },
-                              child: const Text('Rent'),
-                            ),
-                          ),
-                        );
-                      }
+                        ),
+                      );
                     },
                   ),
                 );
               } else {
-                return const Text('No listings available');
+                return const Text(
+                    'No available listings'); // Default empty state
               }
             },
           ),
