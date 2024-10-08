@@ -23,7 +23,7 @@ module SunShare::SolarPanelRental {
     }
 
     // Registry to store all listed solar panels
-    struct PanelRegistry has key {
+    struct PanelRegistry has store, key {
         panels: vector<SolarPanel>
     }
 
@@ -32,18 +32,42 @@ module SunShare::SolarPanelRental {
         agreements: vector<RentalAgreement>
     }
 
-    /// Create a new listing (only for authenticated users)
-    public fun list_panel(account: &signer, capacity: u64, rental_rate: u64) acquires PanelRegistry {
-        let owner = signer::address_of(account); // Authenticated user's address
-        let new_panel = SolarPanel { owner, capacity, rental_rate, is_rented: false };
+ 
 
-        if (!exists<PanelRegistry>(owner)) {
-            move_to(account, PanelRegistry { panels: vector::empty() });
-        };
+public entry fun list_panel(account: &signer, capacity: u64, rental_rate: u64) acquires PanelRegistry {
+    // Ensure valid inputs
+    assert!(capacity > 0, 101);  // Ensure capacity is positive
+    assert!(rental_rate > 0, 102);  // Ensure rental rate is positive
+    
+    let owner = signer::address_of(account); // Authenticated user's address
+    
+    // Check if the PanelRegistry exists for the owner
+    if (!exists<PanelRegistry>(owner)) {
+        // Create the PanelRegistry if it doesn't exist
+        move_to(account, PanelRegistry { panels: vector::empty() });
+    };
+    
+    // Check for duplicate panels
+    check_for_duplicates(owner, capacity, rental_rate);
+    
+    // Create and add the new panel
+    let new_panel = SolarPanel { owner, capacity, rental_rate, is_rented: false };
+    vector::push_back(&mut borrow_global_mut<PanelRegistry>(owner).panels, new_panel);
+}
 
-        let registry = borrow_global_mut<PanelRegistry>(owner);
-        vector::push_back(&mut registry.panels, new_panel);
-    }
+
+// Helper function to check for duplicate panels
+fun check_for_duplicates(owner: address, capacity: u64, rental_rate: u64) acquires PanelRegistry {
+    let panels = &borrow_global<PanelRegistry>(owner).panels;
+    let num_panels = vector::length(panels);
+    let i = 0;
+    while (i < num_panels) {
+        let existing_panel = vector::borrow(panels, i);
+        // Ensure that no panel with the same capacity and rental_rate is listed
+        assert!(existing_panel.capacity != capacity || existing_panel.rental_rate != rental_rate, 103);
+        i = i + 1;
+    };
+}
 
     /// Get all available panels for a given owner
     public fun get_available_panels(owner: address): vector<SolarPanel> acquires PanelRegistry {

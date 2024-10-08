@@ -1,7 +1,94 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class Web3Service {
+  final String privateKey =
+      '0xc78df74c67abaf012b5f924da0742319361114fed62dff5d205479c64f1783d5';
+  final String accountAddress =
+      '9063b0cae7dd97c0491259a99ef90b35a93d26248c3a4c295872b158cbfdcac7'; // Ensure the 0x prefix
+  final String nodeUrl = 'https://fullnode.devnet.aptoslabs.com';
+  final String faucetUrl = 'https://faucet.devnet.aptoslabs.com';
+  final String signingServiceUrl = 'http://172.18.40.152:3000';
+
+
+  // Function to create a new listing by calling list_panel on the blockchain
+Future<void> createListing(int capacity, int rentalRate) async {
+    final sequenceNumber = await getSequenceNumber();
+
+    // Correct transaction request format with function call
+  final txRequest = {
+      "sender": "0x$accountAddress",
+      "sequence_number": sequenceNumber,
+      "max_gas_amount": "1000",
+      "gas_unit_price": "1",
+      "expiration_timestamp_secs":
+          (DateTime.now().millisecondsSinceEpoch ~/ 1000 + 600).toString(),
+      "capacity": capacity.toString(),
+      "rentalRate": rentalRate.toString(),
+      "payload": {
+        "type": "entry_function_payload",
+        "function":
+            "0x$accountAddress::SolarPanelRental::list_panel", // Reference the correct function here
+        "type_arguments": [],
+        "arguments": [
+          capacity,
+          rentalRate,
+        ]
+      }
+    };
+
+
+
+
+    // Send the transaction request to the signing service
+    final signedTxn = await signTransaction(txRequest);
+
+    // Submit the signed transaction to the Aptos blockchain
+    final response = await http.post(
+      Uri.parse('$nodeUrl/v1/transactions'),
+      headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+      body: jsonEncode(signedTxn),
+    );
+
+    if (response.statusCode == 202) {
+      print('Transaction submitted successfully');
+    } else {
+      print('Error: ${response.body}');
+      throw Exception('Failed to create listing');
+    }
+  }
+
+
+  // Function to send the transaction to the backend signing service
+  Future<Map<String, dynamic>> signTransaction(
+      Map<String, dynamic> txRequest) async {
+    final response = await http.post(
+      Uri.parse('$signingServiceUrl/sign-transaction'),
+      headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+      body: jsonEncode(txRequest),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      print('Error signing transaction: ${response.body}');
+      throw Exception('Failed to sign transaction');
+    }
+  }
+
+  // Function to get the current sequence number for the account
+  Future<String> getSequenceNumber() async {
+    final url = Uri.parse('$nodeUrl/v1/accounts/$accountAddress');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['sequence_number'] as String;
+    } else {
+      throw Exception('Failed to fetch sequence number');
+    }
+  }
   // Function to check if the Aptos wallet address is valid
   Future<bool> checkWalletAddress(String address) async {
     final url =
